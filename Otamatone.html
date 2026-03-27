@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2685.4">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px Helvetica; min-height: 14.0px}
+  </style>
+</head>
+<body>
+<p class="p1">&lt;!DOCTYPE html&gt;</p>
+<p class="p1">&lt;html lang="en"&gt;</p>
+<p class="p1">&lt;head&gt;</p>
+<p class="p1">&lt;meta charset="UTF-8"&gt;</p>
+<p class="p1">&lt;title&gt;Otamatone Pro V2&lt;/title&gt;</p>
+<p class="p1">&lt;style&gt;</p>
+<p class="p1">body {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>margin: 0;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>background: #0f172a;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>color: white;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>font-family: sans-serif;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>display: flex;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>flex-direction: column;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>align-items: center;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>justify-content: center;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>height: 100vh;</p>
+<p class="p1">}</p>
+<p class="p1">canvas {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>background: #1e293b;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>border-radius: 20px;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>margin: 10px;</p>
+<p class="p1">}</p>
+<p class="p1">button {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>padding: 10px 14px;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>margin: 4px;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>border-radius: 10px;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>border: none;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>font-weight: bold;</p>
+<p class="p1">}</p>
+<p class="p1">.active { background: #22c55e; color: black; }</p>
+<p class="p1">&lt;/style&gt;</p>
+<p class="p1">&lt;/head&gt;</p>
+<p class="p1">&lt;body&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;canvas id="face" width="200" height="200"&gt;&lt;/canvas&gt;</p>
+<p class="p1">&lt;canvas id="fretboard" width="300" height="100"&gt;&lt;/canvas&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button id="powerBtn"&gt;ON&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button onclick="setFreq(440)"&gt;440 Hz&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button onclick="setFreq(441)"&gt;441 Hz&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button onclick="setFreq(339)"&gt;339 Hz&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;div&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button onclick="adjustFreq(-1)"&gt;-&lt;/button&gt;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>&lt;button onclick="adjustFreq(1)"&gt;+&lt;/button&gt;</p>
+<p class="p1">&lt;/div&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;script&gt;</p>
+<p class="p1">const ctx = new (window.AudioContext || window.webkitAudioContext)();</p>
+<p class="p2"><br></p>
+<p class="p1">let osc, gain, filter;</p>
+<p class="p1">let isOn = false;</p>
+<p class="p1">let mouthOpen = false;</p>
+<p class="p1">let currentFreq = 440;</p>
+<p class="p2"><br></p>
+<p class="p1">// scale</p>
+<p class="p1">const scale = [</p>
+<p class="p1">130.81,146.83,164.81,174.61,196.00,220.00,246.94,</p>
+<p class="p1">261.63,293.66,329.63,349.23,392.00,440.00,493.88</p>
+<p class="p1">];</p>
+<p class="p2"><br></p>
+<p class="p1">// START</p>
+<p class="p1">function startSound() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc = ctx.createOscillator();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>gain = ctx.createGain();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>filter = ctx.createBiquadFilter();</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc.type = "sawtooth";</p>
+<p class="p1"><span class="Apple-converted-space">  </span>gain.gain.value = 0.15;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>filter.type = "lowpass";</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc.connect(filter);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>filter.connect(gain);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>gain.connect(ctx.destination);</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc.start();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>setFrequency(currentFreq);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// STOP</p>
+<p class="p1">function stopSound() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (osc) osc.stop();</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// GLIDE</p>
+<p class="p1">function setFrequency(freq) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>currentFreq = freq;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!osc) return;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc.frequency.cancelScheduledValues(ctx.currentTime);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>osc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.08);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// BUTTON SET</p>
+<p class="p1">function setFreq(freq) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>setFrequency(freq);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// +/- adjust</p>
+<p class="p1">function adjustFreq(amount) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>setFrequency(currentFreq + amount);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// POWER BUTTON</p>
+<p class="p1">document.getElementById("powerBtn").onclick = () =&gt; {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!isOn) {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>startSound();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>isOn = true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>powerBtn.classList.add("active");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>stopSound();</p>
+<p class="p1"><span class="Apple-converted-space">    </span>isOn = false;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>powerBtn.classList.remove("active");</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">};</p>
+<p class="p2"><br></p>
+<p class="p1">// 🎸 FRETBOARD</p>
+<p class="p1">const fretCanvas = document.getElementById("fretboard");</p>
+<p class="p1">const fctx = fretCanvas.getContext("2d");</p>
+<p class="p2"><br></p>
+<p class="p1">function drawFretboard(active = -1) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>fctx.clearRect(0,0,300,100);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>let w = 300 / scale.length;</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>scale.forEach((note,i)=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">    </span>fctx.fillStyle = (i===active) ? "#22c55e" : "#334155";</p>
+<p class="p1"><span class="Apple-converted-space">    </span>fctx.fillRect(i*w,0,w-2,100);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>});</p>
+<p class="p1">}</p>
+<p class="p1">drawFretboard();</p>
+<p class="p2"><br></p>
+<p class="p1">// PLAY FROM MOUSE</p>
+<p class="p1">function playFromX(x) {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const i = Math.floor((x/window.innerWidth)*scale.length);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>const idx = Math.max(0, Math.min(scale.length-1, i));</p>
+<p class="p2"><br></p>
+<p class="p1"><span class="Apple-converted-space">  </span>setFrequency(scale[idx]);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>drawFretboard(idx);</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// MOUSE</p>
+<p class="p1">window.addEventListener("mousemove", e=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!isOn) return;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>playFromX(e.clientX);</p>
+<p class="p1">});</p>
+<p class="p2"><br></p>
+<p class="p1">// TOUCH</p>
+<p class="p1">window.addEventListener("touchmove", e=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!isOn) return;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>playFromX(e.touches[0].clientX);</p>
+<p class="p1">});</p>
+<p class="p2"><br></p>
+<p class="p1">// 😮 FILTER</p>
+<p class="p1">function updateFilter() {</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (!filter) return;</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (mouthOpen) {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>filter.frequency.setTargetAtTime(2000, ctx.currentTime, 0.05);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>} else {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>filter.frequency.setTargetAtTime(400, ctx.currentTime, 0.05);</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">}</p>
+<p class="p2"><br></p>
+<p class="p1">// KEY</p>
+<p class="p1">window.addEventListener("keydown", e=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (e.code==="Space") {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>mouthOpen = true;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>updateFilter();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">});</p>
+<p class="p1">window.addEventListener("keyup", e=&gt;{</p>
+<p class="p1"><span class="Apple-converted-space">  </span>if (e.code==="Space") {</p>
+<p class="p1"><span class="Apple-converted-space">    </span>mouthOpen = false;</p>
+<p class="p1"><span class="Apple-converted-space">    </span>updateFilter();</p>
+<p class="p1"><span class="Apple-converted-space">  </span>}</p>
+<p class="p1">});</p>
+<p class="p1">&lt;/script&gt;</p>
+<p class="p2"><br></p>
+<p class="p1">&lt;/body&gt;</p>
+<p class="p1">&lt;/html&gt;</p>
+</body>
+</html>
