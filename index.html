@@ -26,6 +26,7 @@ button {
   border-radius: 10px;
   border: none;
   font-weight: bold;
+  cursor: pointer;
 }
 .active { background: #22c55e; color: black; }
 </style>
@@ -51,19 +52,20 @@ button {
 </div>
 
 <script>
+/* AUDIO SETUP */
 const ctx = new (window.AudioContext || window.webkitAudioContext)();
 let osc, gain, filter;
 let isOn = false;
 let mouthOpen = false;
 let currentFreq = 440;
 
-// SCALE
+/* SCALE (used only for fretboard visual) */
 const scale = [
 130.81,146.83,164.81,174.61,196.00,220.00,246.94,
 261.63,293.66,329.63,349.23,392.00,440.00,493.88
 ];
 
-// AUDIO
+/* AUDIO FUNCTIONS */
 function startSound() {
   osc = ctx.createOscillator();
   gain = ctx.createGain();
@@ -83,27 +85,29 @@ function stopSound() {
   osc = gain = filter = null;
 }
 
-// FREQUENCY
+/* FREQUENCY CONTROL */
 function setFrequency(freq) {
   currentFreq = freq;
   if (!osc) return;
   osc.frequency.cancelScheduledValues(ctx.currentTime);
   osc.frequency.setTargetAtTime(freq, ctx.currentTime, 0.08);
 }
+
 function setFreq(freq) { setFrequency(freq); }
 function adjustFreq(amount) { setFrequency(currentFreq + amount); }
 
-// POWER
+/* POWER BUTTON */
 document.getElementById("powerBtn").onclick = () => {
   const btn = document.getElementById("powerBtn");
   if (!isOn) { startSound(); isOn = true; btn.classList.add("active"); }
   else { stopSound(); isOn = false; btn.classList.remove("active"); }
 };
 
-// FRETBOARD
+/* FRETBOARD */
 const fretCanvas = document.getElementById("fretboard");
 const fctx = fretCanvas.getContext("2d");
-function drawFretboard(active = -1) {
+
+function drawFretboard(active=-1) {
   fctx.clearRect(0,0,300,100);
   let w = 300 / scale.length;
   scale.forEach((note,i)=>{
@@ -113,42 +117,53 @@ function drawFretboard(active = -1) {
 }
 drawFretboard();
 
+/* PLAY CONTINUOUS SLIDE FROM MOUSE */
 function playFromX(x) {
-  const i = Math.floor((x/window.innerWidth)*scale.length);
-  const idx = Math.max(0, Math.min(scale.length-1, i));
-  setFrequency(scale[idx]);
-  drawFretboard(idx);
-}
-window.addEventListener("mousemove", e=>{ if(isOn) playFromX(e.clientX); });
-window.addEventListener("touchmove", e=>{ if(isOn) playFromX(e.touches[0].clientX); });
+  const minFreq = scale[0];
+  const maxFreq = scale[scale.length-1];
+  const ratio = Math.max(0, Math.min(1, x / window.innerWidth));
+  const freq = minFreq + ratio * (maxFreq - minFreq);
 
-// CANVAS FACE
+  setFrequency(freq);
+
+  // approximate fretboard highlight
+  const active = Math.floor(ratio * (scale.length-1));
+  drawFretboard(active);
+}
+
+window.addEventListener("mousemove", e => { if(isOn) playFromX(e.clientX); });
+window.addEventListener("touchmove", e => { if(isOn) playFromX(e.touches[0].clientX); });
+
+/* CANVAS FACE ANIMATION */
 const faceCanvas = document.getElementById("face");
 const faceCtx = faceCanvas.getContext("2d");
 let mouthLevel = 0;
 let mouthDirection = 1;
 
-// DRAW FACE
 function drawFace() {
   faceCtx.clearRect(0,0,200,200);
+
   // head
   faceCtx.fillStyle = "#FFD700";
   faceCtx.beginPath();
   faceCtx.ellipse(100,100,80,120,0,0,Math.PI*2);
   faceCtx.fill();
+
   // eyes
-  faceCtx.fillStyle="#000";
+  faceCtx.fillStyle = "#000";
   faceCtx.beginPath();
   faceCtx.ellipse(65,80,10,10,0,0,Math.PI*2);
   faceCtx.fill();
   faceCtx.beginPath();
   faceCtx.ellipse(135,80,10,10,0,0,Math.PI*2);
   faceCtx.fill();
+
   // mouth
-  faceCtx.fillStyle="#000";
-  let mouthHeight = 10 + mouthLevel*20; // 10 to 30px
+  faceCtx.fillStyle = "#000";
+  let mouthHeight = 10 + mouthLevel*20;
   faceCtx.fillRect(70,150-mouthHeight/2,60,mouthHeight);
 }
+
 function animateMouth() {
   if(mouthOpen){
     mouthLevel += 0.1*mouthDirection;
@@ -162,18 +177,18 @@ function animateMouth() {
 }
 animateMouth();
 
-// WAH FILTER
+/* FILTER WAH */
 function updateFilter() {
   if(!filter) return;
   if(mouthOpen) filter.frequency.setTargetAtTime(2000,ctx.currentTime,0.05);
   else filter.frequency.setTargetAtTime(400,ctx.currentTime,0.05);
 }
 
-// SPACE = Wah
-window.addEventListener("keydown", e=>{
+/* SPACEBAR = WAH */
+window.addEventListener("keydown", e => {
   if(e.code==="Space"){ mouthOpen=true; updateFilter(); }
 });
-window.addEventListener("keyup", e=>{
+window.addEventListener("keyup", e => {
   if(e.code==="Space"){ mouthOpen=false; updateFilter(); }
 });
 </script>
