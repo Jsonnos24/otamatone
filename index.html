@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Otamatone Pro Smooth</title>
+<title>Otamatone Pro Smooth Canvas</title>
 <style>
 body {
   margin: 0;
@@ -14,11 +14,6 @@ body {
   align-items: center;
   justify-content: center;
   height: 100vh;
-}
-img#omatoneFace {
-  width: 200px;
-  margin: 10px;
-  transition: all 0.05s ease;
 }
 canvas {
   background: #1e293b;
@@ -37,7 +32,7 @@ button {
 </head>
 <body>
 
-<img id="omatoneFace" src="omatone-closed.png">
+<canvas id="face" width="200" height="200"></canvas>
 <canvas id="fretboard" width="300" height="100"></canvas>
 
 <div>
@@ -62,20 +57,13 @@ let isOn = false;
 let mouthOpen = false;
 let currentFreq = 440;
 
-// Otamatone frames
-const mouthFrames = ["omatone-1.png","omatone-2.png","omatone-3.png"];
-let frameIndex = 0;
-let mouthInterval;
-
-const omatoneImg = document.getElementById("omatoneFace");
-
 // SCALE
 const scale = [
 130.81,146.83,164.81,174.61,196.00,220.00,246.94,
 261.63,293.66,329.63,349.23,392.00,440.00,493.88
 ];
 
-// START / STOP
+// AUDIO
 function startSound() {
   osc = ctx.createOscillator();
   gain = ctx.createGain();
@@ -89,6 +77,7 @@ function startSound() {
   osc.start();
   setFrequency(currentFreq);
 }
+
 function stopSound() {
   if (osc) osc.stop();
   osc = gain = filter = null;
@@ -104,7 +93,7 @@ function setFrequency(freq) {
 function setFreq(freq) { setFrequency(freq); }
 function adjustFreq(amount) { setFrequency(currentFreq + amount); }
 
-// POWER BUTTON
+// POWER
 document.getElementById("powerBtn").onclick = () => {
   const btn = document.getElementById("powerBtn");
   if (!isOn) { startSound(); isOn = true; btn.classList.add("active"); }
@@ -124,7 +113,6 @@ function drawFretboard(active = -1) {
 }
 drawFretboard();
 
-// PLAY FROM MOUSE / TOUCH
 function playFromX(x) {
   const i = Math.floor((x/window.innerWidth)*scale.length);
   const idx = Math.max(0, Math.min(scale.length-1, i));
@@ -134,29 +122,51 @@ function playFromX(x) {
 window.addEventListener("mousemove", e=>{ if(isOn) playFromX(e.clientX); });
 window.addEventListener("touchmove", e=>{ if(isOn) playFromX(e.touches[0].clientX); });
 
-// MOUTH / WAH
-function startMouthAnimation() {
-  clearInterval(mouthInterval);
-  mouthInterval = setInterval(()=>{
-    omatoneImg.src = mouthFrames[frameIndex];
-    frameIndex = (frameIndex+1) % mouthFrames.length;
-  }, 100); // change frame every 100ms
-}
-function stopMouthAnimation() {
-  clearInterval(mouthInterval);
-  omatoneImg.src = "omatone-closed.png";
-  frameIndex = 0;
-}
+// CANVAS FACE
+const faceCanvas = document.getElementById("face");
+const faceCtx = faceCanvas.getContext("2d");
+let mouthLevel = 0;
+let mouthDirection = 1;
 
-function updateFilter() {
-  if (!filter) return;
-  if (mouthOpen) {
-    filter.frequency.setTargetAtTime(2000, ctx.currentTime, 0.05);
-    startMouthAnimation();
+// DRAW FACE
+function drawFace() {
+  faceCtx.clearRect(0,0,200,200);
+  // head
+  faceCtx.fillStyle = "#FFD700";
+  faceCtx.beginPath();
+  faceCtx.ellipse(100,100,80,120,0,0,Math.PI*2);
+  faceCtx.fill();
+  // eyes
+  faceCtx.fillStyle="#000";
+  faceCtx.beginPath();
+  faceCtx.ellipse(65,80,10,10,0,0,Math.PI*2);
+  faceCtx.fill();
+  faceCtx.beginPath();
+  faceCtx.ellipse(135,80,10,10,0,0,Math.PI*2);
+  faceCtx.fill();
+  // mouth
+  faceCtx.fillStyle="#000";
+  let mouthHeight = 10 + mouthLevel*20; // 10 to 30px
+  faceCtx.fillRect(70,150-mouthHeight/2,60,mouthHeight);
+}
+function animateMouth() {
+  if(mouthOpen){
+    mouthLevel += 0.1*mouthDirection;
+    if(mouthLevel>1) mouthDirection=-1;
+    if(mouthLevel<0) mouthDirection=1;
   } else {
-    filter.frequency.setTargetAtTime(400, ctx.currentTime, 0.05);
-    stopMouthAnimation();
+    mouthLevel *=0.9; // smooth close
   }
+  drawFace();
+  requestAnimationFrame(animateMouth);
+}
+animateMouth();
+
+// WAH FILTER
+function updateFilter() {
+  if(!filter) return;
+  if(mouthOpen) filter.frequency.setTargetAtTime(2000,ctx.currentTime,0.05);
+  else filter.frequency.setTargetAtTime(400,ctx.currentTime,0.05);
 }
 
 // SPACE = Wah
@@ -167,5 +177,6 @@ window.addEventListener("keyup", e=>{
   if(e.code==="Space"){ mouthOpen=false; updateFilter(); }
 });
 </script>
+
 </body>
 </html>
